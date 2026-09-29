@@ -7,14 +7,18 @@ public struct Comment: Equatable, Sendable {
     public let lightCount: Int
     public let publishTime: Int64
     public let subCommentCount: Int
+    public let subjectID: String
+    public let hasLight: Bool
 
-    public init(commentID: String, userName: String, content: String, lightCount: Int, publishTime: Int64, subCommentCount: Int) {
+    public init(commentID: String, userName: String, content: String, lightCount: Int, publishTime: Int64, subCommentCount: Int, subjectID: String = "", hasLight: Bool = false) {
         self.commentID = commentID
         self.userName = userName
         self.content = content
         self.lightCount = lightCount
         self.publishTime = publishTime
         self.subCommentCount = subCommentCount
+        self.subjectID = subjectID
+        self.hasLight = hasLight
     }
 }
 
@@ -71,8 +75,10 @@ public struct CommentClient: Sendable {
             throw CommentClientError.insecureURL
         }
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let initialTime: Int64 = parentID == nil ? Int64(Date().timeIntervalSince1970 * 1000) : 0
+        let publishTime = cursor?.publishTime ?? initialTime
         var items = [
-            URLQueryItem(name: "publishTime", value: String(cursor?.publishTime ?? (parentID == nil ? Int64(Date().timeIntervalSince1970 * 1000) : 0)))
+            URLQueryItem(name: "publishTime", value: String(publishTime)),
             URLQueryItem(name: "order", value: "desc"),
             URLQueryItem(name: "outBizType", value: type),
             URLQueryItem(name: "outBizNo", value: number),
@@ -123,7 +129,7 @@ public struct CommentClient: Sendable {
                   let subCount = integer(row["subCommentCount"]) else {
                 throw CommentClientError.invalidPayload
             }
-            return Comment(commentID: id, userName: user, content: content, lightCount: lightCount, publishTime: publishTime, subCommentCount: subCount)
+            return Comment(commentID: id, userName: user, content: content, lightCount: lightCount, publishTime: publishTime, subCommentCount: subCount, subjectID: string(row["subjectId"]) ?? "", hasLight: row["hasLight"] as? Bool ?? false)
         }
         return CommentPage(comments: comments, cursor: CommentCursor(publishTime: cursorTime), hasMore: hasMore, commentCount: commentCount)
     }
