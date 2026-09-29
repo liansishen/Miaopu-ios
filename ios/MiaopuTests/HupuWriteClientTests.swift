@@ -49,8 +49,8 @@ final class HupuWriteClientTests: XCTestCase {
         XCTAssertTrue(requests[1].url!.path.hasSuffix("/1/8.2.58/bplcommentapi/bpl/comment/publish"))
         let second = try JSONSerialization.jsonObject(with: requests[1].httpBody!) as! [String: Any]
         XCTAssertEqual(second["parentCommentId"] as? String, "comment-9")
-        XCTAssertEqual(second["images"] as? [Any], [])
-        XCTAssertEqual(second["ancillaryContents"] as? [Any], [])
+        XCTAssertEqual((second["images"] as? [Any])?.count, 0)
+        XCTAssertEqual((second["ancillaryContents"] as? [Any])?.count, 0)
     }
 
     func testRejectsMissingLoginCookieAndInvalidScore() async {
