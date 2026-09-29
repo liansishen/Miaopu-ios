@@ -24,3 +24,7 @@ APP_PATH="$(pwd)/build/DerivedData/Build/Products/Release-iphoneos/Miaopu.app" \
 ```
 
 打包脚本检查应用及 WidgetKit 扩展的 arm64 架构和无签名状态，并生成 SHA-256 校验文件。未签名 IPA 需要后续签名才能安装；当前只进行模拟器与 CI 验证。
+
+## 标签发布
+
+`.github/workflows/ios-release.yml` 可手动触发，只运行测试并上传未签名 IPA；推送 `vX.Y.Z` 标签后，同一工作流在测试、无签名构建与包校验通过时创建 GitHub Release，并附上 IPA 和 SHA-256 校验文件。标签版本必须等于 `ios/project.yml` 中的 `MARKETING_VERSION`，仓库还需包含 `docs/releases/X.Y.Z.md`。仓库为私有仓库，下载 Release 附件需要访问权限。
