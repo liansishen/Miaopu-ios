@@ -149,6 +149,7 @@ private struct HomeScreen: View {
                             Image(systemName: "arrow.clockwise")
                         }
                         .accessibilityLabel("刷新赛程")
+                        .accessibilityIdentifier("home-refresh")
                         .disabled(isLoading)
                     }
                 }
@@ -184,45 +185,182 @@ private struct EventsScreen: View {
     @ObservedObject var state: ScheduleState
     @State private var selected: SportCategory = .lol
     @State private var search = ""
+    @State private var scrubIndex: Int?
+    @State private var scrubTitle: String?
+    @State private var scrubFraction: CGFloat = 0
+
+    private var days: [MatchDay] {
+        MatchDay.group(state.results(for: selected, search: search))
+    }
+
+    private var isLoading: Bool { state.loading.contains(selected) }
+
+    private var todayKey: String {
+        let formatter = DateFormatter()
+        formatter.calendar = .current
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date())
+    }
 
     var body: some View {
-        List {
-            if let failure = state.failures[selected] {
-                ErrorRow(message: failure) { Task { await state.load(selected, force: true) } }
-            } else if state.loading.contains(selected) && state.matches[selected] == nil {
-                ProgressView("正在加载赛程")
-            } else if state.results(for: selected, search: search).isEmpty {
-                ContentUnavailableView.search(text: search)
-            } else {
-                ForEach(MatchDay.group(state.results(for: selected, search: search))) { day in
-                    Section(day.title) {
-                        ForEach(day.matches) { match in
-                            NavigationLink {
-                                MatchDetailScreen(match: match)
-                            } label: {
-                                MatchRow(match: match)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    if let failure = state.failures[selected] {
+                        ErrorRow(message: failure) { Task { await state.load(selected, force: true) } }
+                            .padding(24)
+                    } else if isLoading && state.matches[selected] == nil {
+                        ProgressView("正在加载赛程")
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 48)
+                    } else if days.isEmpty {
+                        ContentUnavailableView.search(text: search)
+                            .padding(.top, 48)
+                    } else {
+                        ForEach(days) { day in
+                            Section {
+                                ForEach(day.matches) { match in
+                                    NavigationLink {
+                                        MatchDetailScreen(match: match)
+                                    } label: {
+                                        MatchRow(match: match)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(.horizontal, 16)
+                                    Divider().padding(.leading, 16)
+                                }
+                            } header: {
+                                dayBand(day).id(day.id)
                             }
                         }
                     }
                 }
+                .padding(.bottom, 24)
             }
-        }
-        .navigationTitle("赛事")
-        .safeAreaInset(edge: .top) {
-            Picker("赛事项目", selection: $selected) {
-                ForEach(SportCategory.allCases) { sport in
-                    Text(sportName(sport)).tag(sport)
+            .background(Color(.systemBackground))
+            .overlay(alignment: .trailing) {
+                if days.count > 1 { scrubber(proxy) }
+            }
+            .overlay { scrubBubble }
+            .navigationTitle("赛事")
+            .safeAreaInset(edge: .top) { sportPicker }
+            .searchable(text: $search, prompt: "搜索队伍或赛事")
+            .refreshable { await state.load(selected, force: true) }
+            .task(id: selected) { await state.load(selected) }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { jumpToToday(proxy) } label: {
+                        Image(systemName: "calendar")
+                    }
+                    .accessibilityIdentifier("jump-today")
+                    .accessibilityLabel("跳到今天")
+                    .disabled(days.isEmpty)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { Task { await state.load(selected, force: true) } } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .accessibilityLabel("刷新赛程")
+                    .accessibilityIdentifier("events-refresh")
+                    .disabled(isLoading)
                 }
             }
-            .accessibilityIdentifier("sport-picker")
-            .pickerStyle(.menu)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal)
-            .background(.regularMaterial)
         }
-        .searchable(text: $search, prompt: "搜索队伍或赛事")
-        .refreshable { await state.load(selected, force: true) }
-        .task(id: selected) { await state.load(selected) }
+    }
+
+    private var sportPicker: some View {
+        Picker("赛事项目", selection: $selected) {
+            ForEach(SportCategory.allCases) { sport in
+                Text(sportName(sport)).tag(sport)
+            }
+        }
+        .accessibilityIdentifier("sport-picker")
+        .pickerStyle(.menu)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal)
+        .background(.regularMaterial)
+    }
+
+    /// 日期分隔条：今天用强调色圆点标记，右侧显示当天场次数量。
+    private func dayBand(_ day: MatchDay) -> some View {
+        HStack(spacing: 8) {
+            if day.id == todayKey {
+                Circle().fill(MiaopuStyle.accent).frame(width: 7, height: 7)
+            }
+            Text(day.title).font(.footnote.bold())
+            Spacer()
+            Text("\(day.matches.count) 场")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
+        .background(.regularMaterial)
+    }
+
+    /// 右侧快速滚动条：按下即显示日期，拖动时按比例定位到对应日期。
+    private func scrubber(_ proxy: ScrollViewProxy) -> some View {
+        GeometryReader { geo in
+            let height = max(geo.size.height, 1)
+            let count = days.count
+            let thumbHeight = max(32, height * min(1, 8 / CGFloat(max(count, 1))))
+            ZStack(alignment: .top) {
+                Capsule()
+                    .fill(Color.primary.opacity(0.08))
+                    .frame(width: 4)
+                    .frame(maxHeight: .infinity)
+                Capsule()
+                    .fill(MiaopuStyle.accent)
+                    .frame(width: 4, height: thumbHeight)
+                    .offset(y: scrubIndex == nil ? 0 : (height - thumbHeight) * scrubFraction)
+                    .opacity(scrubIndex == nil ? 0 : 1)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.trailing, 8)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard count > 0 else { return }
+                        let ratio = min(max(value.location.y / height, 0), 0.9999)
+                        let index = min(Int(ratio * CGFloat(count)), count - 1)
+                        scrubFraction = ratio
+                        guard index != scrubIndex else { return }
+                        scrubIndex = index
+                        scrubTitle = days[index].title
+                        proxy.scrollTo(days[index].id, anchor: .top)
+                    }
+                    .onEnded { _ in
+                        scrubIndex = nil
+                        scrubTitle = nil
+                    }
+            )
+        }
+        .frame(width: 44)
+    }
+
+    @ViewBuilder
+    private var scrubBubble: some View {
+        if let scrubTitle {
+            GeometryReader { geo in
+                let height = max(geo.size.height, 1)
+                ScrubBubble(text: scrubTitle)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.trailing, 60)
+                    .offset(y: min(max(scrubFraction * height - 20, 0), max(height - 44, 0)))
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
+    private func jumpToToday(_ proxy: ScrollViewProxy) {
+        guard !days.isEmpty else { return }
+        let target = days.first { $0.id >= todayKey } ?? days[days.count - 1]
+        withAnimation(.easeInOut(duration: 0.25)) {
+            proxy.scrollTo(target.id, anchor: .top)
+        }
     }
 }
 

@@ -333,6 +333,23 @@ struct TagPill: View {
     }
 }
 
+/// 快速滚动时跟随手指显示的日期提示。
+struct ScrubBubble: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.subheadline.bold())
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(.regularMaterial)
+                    .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+            )
+    }
+}
+
 /// 热评条：浅色与深色使用不同的暖色底。
 struct HotCommentBar: View {
     let text: String

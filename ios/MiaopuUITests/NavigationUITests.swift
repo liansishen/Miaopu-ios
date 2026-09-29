@@ -20,6 +20,8 @@ final class NavigationUITests: XCTestCase {
         app.tabBars.buttons["赛事"].tap()
         XCTAssertTrue(app.navigationBars["赛事"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["sport-picker"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["jump-today"].exists)
+        XCTAssertTrue(app.buttons["events-refresh"].exists)
 
         app.tabBars.buttons["我的"].tap()
         app.buttons["赛事订阅"].tap()
@@ -27,6 +29,6 @@ final class NavigationUITests: XCTestCase {
         app.navigationBars.buttons["我的"].tap()
         app.tabBars.buttons["首页"].tap()
         XCTAssertTrue(app.staticTexts["近期赛程"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["刷新赛程"].exists)
+        XCTAssertTrue(app.buttons["home-refresh"].exists)
     }
 }
