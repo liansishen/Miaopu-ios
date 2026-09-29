@@ -27,4 +27,4 @@ APP_PATH="$(pwd)/build/DerivedData/Build/Products/Release-iphoneos/Miaopu.app" \
 
 ## 标签发布
 
-`.github/workflows/ios-release.yml` 可手动触发，只运行测试并上传未签名 IPA；推送 `vX.Y.Z` 标签后，同一工作流在测试、无签名构建与包校验通过时创建 GitHub Release，并附上 IPA 和 SHA-256 校验文件。标签版本必须等于 `ios/project.yml` 中的 `MARKETING_VERSION`，仓库还需包含 `docs/releases/X.Y.Z.md`。仓库为私有仓库，下载 Release 附件需要访问权限。
+`.github/workflows/ios-release.yml` 可手动触发，只运行测试并上传未签名 IPA；推送 `vX.Y.Z` 标签后，同一工作流在测试、无签名构建、图标校验与包校验通过时创建 GitHub Release，并附上 IPA 和 SHA-256 校验文件。标签版本必须等于 `ios/project.yml` 中的 `MARKETING_VERSION`，仓库还需包含 `docs/releases/X.Y.Z.md`。仓库为公开仓库，Release 附件可直接下载。
