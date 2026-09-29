@@ -6,6 +6,11 @@ struct RatingSummary: View {
     var body: some View {
         Section("全场评分") {
             RatingLine(node: detail.root)
+            if let type = detail.root.bizType, let number = detail.root.bizId {
+                NavigationLink("查看评论") {
+                    CommentsView(type: type, number: number, title: detail.root.name)
+                }
+            }
         }
         if !detail.children.isEmpty {
             Section("分局与选手") {
@@ -30,6 +35,11 @@ private struct RatingNodeScreen: View {
         List {
             Section {
                 RatingLine(node: node)
+                if let type = node.bizType, let number = node.bizId {
+                    NavigationLink("查看评论") {
+                        CommentsView(type: type, number: number, title: node.name)
+                    }
+                }
             }
             if let detail {
                 RatingSummary(detail: detail)

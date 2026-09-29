@@ -47,32 +47,66 @@ private func dateText(_ date: Date) -> String {
 struct MainView: View {
     @StateObject private var state = ScheduleState()
     @StateObject private var session = HupuSession()
+    @State private var selectedTab = 0
+    @State private var homePath: [String] = []
     @AppStorage("subscribedSports") private var subscribedSports = "lol,valorant,cs2,basketball,football"
 
     private var subscribed: [SportCategory] {
-        let ids = Set(subscribedSports.split(separator: ",").map(String.init))
-        return SportCategory.allCases.filter { ids.contains($0.rawValue) }
+        var seen = Set<SportCategory>()
+        return subscribedSports.split(separator: ",")
+            .compactMap { SportCategory(rawValue: String($0)) }
+            .filter { seen.insert($0).inserted }
     }
 
     var body: some View {
-        TabView {
-            NavigationStack {
+        TabView(selection: $selectedTab) {
+            NavigationStack(path: $homePath) {
                 HomeScreen(state: state, sports: subscribed)
+                    .navigationDestination(for: String.self) { id in
+                        if let match = state.matches.values.flatMap({ $0 }).first(where: { $0.id == id }) {
+                            MatchDetailScreen(match: match)
+                        } else {
+                            ContentUnavailableView("未找到比赛", systemImage: "sportscourt")
+                        }
+                    }
             }
             .tabItem { Label("首页", systemImage: "house") }
+            .tag(0)
 
             NavigationStack {
                 EventsScreen(state: state)
             }
             .tabItem { Label("赛事", systemImage: "calendar") }
+            .tag(1)
 
             NavigationStack {
                 ProfileScreen(subscribedSports: $subscribedSports, session: session)
             }
             .tabItem { Label("我的", systemImage: "person.crop.circle") }
+            .tag(2)
         }
         .tint(.orange)
         .task { await session.restore() }
+        .onChange(of: subscribedSports) {
+            WidgetSnapshotStore.save(from: subscribed.flatMap { state.matches[$0] ?? [] })
+        }
+        .onReceive(state.$matches) { available in
+            WidgetSnapshotStore.save(from: subscribed.flatMap { available[$0] ?? [] })
+        }
+        .onOpenURL(perform: openWidgetLink)
+    }
+
+    private func openWidgetLink(_ url: URL) {
+        guard url.scheme == "miaopu", url.host == "match",
+              let id = url.pathComponents.dropFirst().first, !id.isEmpty else { return }
+        selectedTab = 0
+        Task {
+            for sport in SportCategory.allCases {
+                if state.matches.values.contains(where: { $0.contains(where: { $0.id == id }) }) { break }
+                await state.load(sport)
+            }
+            homePath = [id]
+        }
     }
 }
 
@@ -146,6 +180,7 @@ private struct EventsScreen: View {
                     Text(sportName(sport)).tag(sport)
                 }
             }
+            .accessibilityIdentifier("sport-picker")
             .pickerStyle(.menu)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal)
@@ -296,20 +331,24 @@ private struct SubscriptionsScreen: View {
         Set(subscribedSports.split(separator: ",").map(String.init))
     }
 
+    private var ordered: [SportCategory] {
+        var seen = Set<SportCategory>()
+        let chosen = subscribedSports.split(separator: ",")
+            .compactMap { SportCategory(rawValue: String($0)) }
+        return (chosen + SportCategory.allCases).filter { seen.insert($0).inserted }
+    }
+
     var body: some View {
         List {
-            ForEach(SportCategory.allCases) { sport in
+            ForEach(ordered) { sport in
                 Button {
-                    var ids = selected
+                    var ids = subscribedSports.split(separator: ",").map(String.init)
                     if ids.contains(sport.rawValue) {
-                        ids.remove(sport.rawValue)
+                        ids.removeAll { $0 == sport.rawValue }
                     } else {
-                        ids.insert(sport.rawValue)
+                        ids.append(sport.rawValue)
                     }
-                    subscribedSports = SportCategory.allCases
-                        .filter { ids.contains($0.rawValue) }
-                        .map(\.rawValue)
-                        .joined(separator: ",")
+                    subscribedSports = ids.joined(separator: ",")
                 } label: {
                     HStack {
                         Text(sportName(sport))
@@ -323,8 +362,15 @@ private struct SubscriptionsScreen: View {
                 }
                 .accessibilityIdentifier("subscription-\(sport.rawValue)")
             }
+            .onMove { offsets, destination in
+                var items = ordered
+                items.move(fromOffsets: offsets, toOffset: destination)
+                subscribedSports = items.filter { selected.contains($0.rawValue) }
+                    .map(\.rawValue).joined(separator: ",")
+            }
         }
         .navigationTitle("赛事订阅")
+        .toolbar { EditButton() }
     }
 }
 

@@ -2,6 +2,10 @@
 *.xcodeproj/
 DerivedData/
 build/
+ios/Miaopu/Info.plist
+ios/Miaopu/Miaopu.entitlements
+ios/MiaopuWidgets/Info.plist
+ios/MiaopuWidgets/MiaopuWidgets.entitlements
 
 # Keep the CI deliverable visible to GitHub Actions artifacts.
 unsigned.ipa

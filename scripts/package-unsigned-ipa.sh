@@ -30,6 +30,19 @@ if [[ -e "$app_path/_CodeSignature" ]] || /usr/bin/codesign -dv "$app_path" >/de
   echo "App must not be code signed." >&2
   exit 1
 fi
+validate_widget() {
+  local widget="$1"
+  [[ -f "$widget/Info.plist" && -f "$widget/MiaopuWidgets" ]] || {
+    echo "Widget extension is missing from the app." >&2
+    exit 1
+  }
+  /usr/bin/lipo -verify_arch arm64 "$widget/MiaopuWidgets" >/dev/null
+  [[ ! -e "$widget/_CodeSignature" ]] && ! /usr/bin/codesign -dv "$widget" >/dev/null 2>&1 || {
+    echo "Widget extension must not be code signed." >&2
+    exit 1
+  }
+}
+validate_widget "$app_path/PlugIns/MiaopuWidgets.appex"
 
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
@@ -54,6 +67,7 @@ if /usr/bin/codesign -dv "$packaged_app" >/dev/null 2>&1; then
   echo "Packaged app is signed." >&2
   exit 1
 fi
+validate_widget "$packaged_app/PlugIns/MiaopuWidgets.appex"
 
 (cd "$(dirname "$output_ipa")" && /usr/bin/shasum -a 256 "$(basename "$output_ipa")") > "${output_ipa}.sha256"
 echo "Created and validated unsigned IPA: $output_ipa"

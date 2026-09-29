@@ -16,12 +16,48 @@ targets:
     sources:
       - path: Miaopu
         optional: false
+    dependencies:
+      - target: MiaopuWidgets
+    entitlements:
+      path: Miaopu/Miaopu.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.liansishen.miaopu
+    info:
+      path: Miaopu/Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - miaopu
     settings:
       base:
         PRODUCT_NAME: Miaopu
         PRODUCT_BUNDLE_IDENTIFIER: com.liansishen.miaopu
         INFOPLIST_KEY_CFBundleDisplayName: Miaopu
-        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+  MiaopuWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: MiaopuWidgets
+      - path: Miaopu/Widget/WidgetSnapshotStore.swift
+      - path: Miaopu/Data/Match.swift
+    entitlements:
+      path: MiaopuWidgets/MiaopuWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.liansishen.miaopu
+    info:
+      path: MiaopuWidgets/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_NAME: MiaopuWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.liansishen.miaopu.widgets
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
         TARGETED_DEVICE_FAMILY: "1,2"
   MiaopuTests:
     type: bundle.unit-test
@@ -33,6 +69,7 @@ targets:
       - target: Miaopu
     settings:
       base:
+        PRODUCT_NAME: MiaopuTests
         PRODUCT_BUNDLE_IDENTIFIER: com.liansishen.miaopu.tests
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -45,6 +82,7 @@ targets:
       - target: Miaopu
     settings:
       base:
+        PRODUCT_NAME: MiaopuUITests
         PRODUCT_BUNDLE_IDENTIFIER: com.liansishen.miaopu.uitests
         GENERATE_INFOPLIST_FILE: YES
 schemes:
@@ -52,6 +90,7 @@ schemes:
     build:
       targets:
         Miaopu: all
+        MiaopuWidgets: all
         MiaopuTests: [test]
         MiaopuUITests: [test]
     test:
