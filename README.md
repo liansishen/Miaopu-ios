@@ -52,6 +52,8 @@ APP_PATH="$(pwd)/build/DerivedData/Build/Products/Release-iphoneos/Miaopu.app" \
 
 推送 `vX.Y.Z` 标签后，`.github/workflows/ios-release.yml` 在测试、无签名构建、图标与包校验通过时创建 GitHub Release，并附上 IPA 和 SHA-256 校验文件。标签版本必须等于 `ios/project.yml` 中的 `MARKETING_VERSION`，仓库还需包含 `docs/releases/X.Y.Z.md`。
 
+`ios.yml` 只在 `ios/**`、`scripts/**` 与工作流文件发生变化时运行，文档与许可证改动不会触发；标签推送由发布工作流负责测试与打包。
+
 ## 反馈与贡献
 
 问题反馈和功能建议请提交至 [Issues](https://github.com/liansishen/Miaopu-ios/issues)。问题报告请附上应用版本、iOS 版本、相关赛事及复现步骤，必要时提供截图，并隐去个人信息。
