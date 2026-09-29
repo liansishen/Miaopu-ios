@@ -54,7 +54,7 @@ jobs:
             exit 1
           fi
           xcodebuild test -project ios/Miaopu.xcodeproj -scheme Miaopu \
-            -destination "$destination" CODE_SIGNING_ALLOWED=NO
+            -destination "$destination" -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO
 
       - name: Build and package unsigned IPA
         shell: bash

@@ -2,13 +2,7 @@ import XCTest
 @testable import Miaopu
 
 final class HupuWriteClientTests: XCTestCase {
-    override func setUp() {
-        super.setUp()
-        URLProtocol.registerClass(WriteMockURLProtocol.self)
-    }
-
     override func tearDown() {
-        URLProtocol.unregisterClass(WriteMockURLProtocol.self)
         WriteMockURLProtocol.handler = nil
         super.tearDown()
     }
@@ -96,7 +90,9 @@ final class HupuWriteClientTests: XCTestCase {
 private final class WriteMockURLProtocol: URLProtocol {
     static var handler: ((URLRequest) -> (Int, Data))?
 
-    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.host == HupuWriteClient.host
+    }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
