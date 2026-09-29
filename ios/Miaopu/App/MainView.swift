@@ -199,6 +199,8 @@ private struct MatchRow: View {
 
 private struct MatchDetailScreen: View {
     let match: Match
+    @State private var rating: RatingDetail?
+    @State private var ratingError: String?
 
     private var detailURL: URL? {
         guard let type = match.outBizType, let number = match.outBizNo else { return nil }
@@ -216,19 +218,40 @@ private struct MatchDetailScreen: View {
             Section {
                 MatchRow(match: match)
             }
-            if let url = detailURL {
-                Section("比赛数据与评分") {
-                    Link("查看赛事详情", destination: url)
+            if let rating {
+                RatingSummary(detail: rating)
+            } else if let ratingError {
+                Section("赛事评分") {
+                    Text(ratingError).foregroundStyle(.secondary)
+                    Button("重试") { Task { await loadRatings() } }
                 }
+            } else if match.outBizType != nil && match.outBizNo != nil {
+                Section("赛事评分") { ProgressView("正在加载评分") }
             } else {
-                Section("比赛数据与评分") {
-                    Text("这场比赛暂无详情入口")
+                Section("赛事评分") {
+                    Text("这场比赛暂无评分入口")
                         .foregroundStyle(.secondary)
+                }
+            }
+            if let url = detailURL {
+                Section("虎扑比赛页面") {
+                    Link("查看比赛原页面", destination: url)
                 }
             }
         }
         .navigationTitle("比赛详情")
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: match.id) { await loadRatings() }
+    }
+
+    private func loadRatings() async {
+        guard let type = match.outBizType, let number = match.outBizNo else { return }
+        do {
+            rating = try await RatingClient().fetch(type: type, number: number)
+            ratingError = nil
+        } catch {
+            ratingError = error.localizedDescription
+        }
     }
 }
 

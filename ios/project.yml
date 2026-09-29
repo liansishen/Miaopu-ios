@@ -6,7 +6,6 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    PRODUCT_NAME: Miaopu
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
@@ -19,6 +18,7 @@ targets:
         optional: false
     settings:
       base:
+        PRODUCT_NAME: Miaopu
         PRODUCT_BUNDLE_IDENTIFIER: com.liansishen.miaopu
         INFOPLIST_KEY_CFBundleDisplayName: Miaopu
         GENERATE_INFOPLIST_FILE: YES
@@ -36,12 +36,25 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.liansishen.miaopu.tests
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1,2"
+  MiaopuUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: MiaopuUITests
+    dependencies:
+      - target: Miaopu
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.liansishen.miaopu.uitests
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   Miaopu:
     build:
       targets:
         Miaopu: all
         MiaopuTests: [test]
+        MiaopuUITests: [test]
     test:
       targets:
         - MiaopuTests
+        - MiaopuUITests
