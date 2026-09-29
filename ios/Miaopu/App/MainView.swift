@@ -140,18 +140,7 @@ private struct HomeScreen: View {
                             .foregroundStyle(.secondary)
                     }
                 } header: {
-                    HStack {
-                        Text("近期赛程")
-                        Spacer()
-                        Button {
-                            Task { await refresh() }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                        .accessibilityLabel("刷新赛程")
-                        .accessibilityIdentifier("home-refresh")
-                        .disabled(isLoading)
-                    }
+                    Text("近期赛程")
                 }
                 ForEach(days) { day in
                     Section(day.title) {
@@ -174,6 +163,16 @@ private struct HomeScreen: View {
             }
         }
         .navigationTitle("喵扑")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { Task { await refresh() } } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .accessibilityLabel("刷新赛程")
+                .accessibilityIdentifier("home-refresh")
+                .disabled(sports.isEmpty || isLoading)
+            }
+        }
         .refreshable { await refresh() }
         .task(id: sports.map(\.rawValue).joined(separator: ",")) {
             for sport in sports { await state.load(sport) }
@@ -239,12 +238,13 @@ private struct EventsScreen: View {
                 .padding(.bottom, 24)
             }
             .background(Color(.systemBackground))
+            .contentMargins(.top, 0, for: .scrollContent)
             .overlay(alignment: .trailing) {
                 if days.count > 1 { scrubber(proxy) }
             }
             .overlay { scrubBubble }
             .navigationTitle("赛事")
-            .safeAreaInset(edge: .top) { sportPicker }
+            .safeAreaInset(edge: .top, spacing: 0) { sportPicker }
             .searchable(text: $search, prompt: "搜索队伍或赛事")
             .refreshable { await state.load(selected, force: true) }
             .task(id: selected) { await state.load(selected) }
@@ -295,7 +295,7 @@ private struct EventsScreen: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 16)
-        .padding(.top, 12)
+        .padding(.top, 8)
         .padding(.bottom, 4)
         .background(.regularMaterial)
     }
