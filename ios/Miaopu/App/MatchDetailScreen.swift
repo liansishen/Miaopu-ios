@@ -280,38 +280,56 @@ struct MatchStatsTableView: View {
     var body: some View {
         MiaopuCard(padding: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 8) {
-                    if let logo = team.logoURL { TeamLogo(url: logo, name: team.name, size: 24) }
-                    Text(team.name).font(.system(size: 16, weight: .bold))
-                    Spacer()
-                    if let score = team.score { Text(score).font(.system(size: 16, weight: .bold)) }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    VStack(spacing: 0) {
-                        HStack(spacing: 0) {
-                            headerCell("选手", width: 136, alignment: .leading)
-                            ForEach(Array(team.columns.dropFirst().enumerated()), id: \.offset) { _, column in
-                                headerCell(column, width: 68, alignment: .center)
-                            }
-                        }
-                        ForEach(Array(team.players.enumerated()), id: \.offset) { index, row in
-                            HStack(spacing: 0) {
-                                playerCell(row.first, alternate: index % 2 == 1)
-                                ForEach(Array(row.dropFirst().enumerated()), id: \.offset) { _, cell in
-                                    Text(cell.text)
-                                        .font(.system(size: 12, weight: .medium))
-                                        .lineLimit(2)
-                                        .frame(width: 68, height: 30)
-                                        .background(rowBackground(index))
-                                }
-                            }
-                        }
+                header
+                HStack(alignment: .top, spacing: 0) {
+                    playerColumn
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        statsColumn
                     }
                 }
                 .padding(.bottom, 8)
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 8) {
+            if let logo = team.logoURL { TeamLogo(url: logo, name: team.name, size: 24) }
+            Text(team.name).font(.system(size: 16, weight: .bold))
+            Spacer()
+            if let score = team.score { Text(score).font(.system(size: 16, weight: .bold)) }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    /// 选手列固定在左侧，只有统计列随内容横向滚动。
+    private var playerColumn: some View {
+        VStack(spacing: 0) {
+            headerCell("选手", width: 136, alignment: .leading)
+            ForEach(Array(team.players.enumerated()), id: \.offset) { index, row in
+                playerCell(row.first, alternate: index % 2 == 1)
+            }
+        }
+    }
+
+    private var statsColumn: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(Array(team.columns.dropFirst().enumerated()), id: \.offset) { _, column in
+                    headerCell(column, width: 68, alignment: .center)
+                }
+            }
+            ForEach(Array(team.players.enumerated()), id: \.offset) { index, row in
+                HStack(spacing: 0) {
+                    ForEach(Array(row.dropFirst().enumerated()), id: \.offset) { _, cell in
+                        Text(cell.text)
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(2)
+                            .frame(width: 68, height: 30)
+                            .background(rowBackground(index))
+                    }
+                }
             }
         }
     }

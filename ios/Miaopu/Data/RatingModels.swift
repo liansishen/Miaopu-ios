@@ -27,8 +27,6 @@ struct RatingTarget: Equatable, Identifiable, Sendable {
 
     var hasScore: Bool { scoreCount > 0 }
 
-    var isPlayer: Bool { bizType.hasSuffix("_item") }
-
     init(
         nodeID: Int64?,
         bizType: String,
