@@ -21,7 +21,7 @@ version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_
 }
 
 binary="$app_path/Miaopu"
-if [[ ! -f "$binary" ]] || ! /usr/bin/lipo -verify_arch arm64 "$binary" >/dev/null; then
+if [[ ! -f "$binary" ]] || ! /usr/bin/lipo "$binary" -verify_arch arm64 >/dev/null; then
   echo "App executable is missing arm64 architecture." >&2
   exit 1
 fi
@@ -36,7 +36,7 @@ validate_widget() {
     echo "Widget extension is missing from the app." >&2
     exit 1
   }
-  /usr/bin/lipo -verify_arch arm64 "$widget/MiaopuWidgets" >/dev/null
+  /usr/bin/lipo "$widget/MiaopuWidgets" -verify_arch arm64 >/dev/null
   [[ ! -e "$widget/_CodeSignature" ]] && ! /usr/bin/codesign -dv "$widget" >/dev/null 2>&1 || {
     echo "Widget extension must not be code signed." >&2
     exit 1
@@ -58,7 +58,7 @@ packaged_app="$stage/verify/Payload/Miaopu.app"
   echo "IPA does not contain Payload/Miaopu.app with Info.plist." >&2
   exit 1
 }
-/usr/bin/lipo -verify_arch arm64 "$packaged_app/Miaopu" >/dev/null
+/usr/bin/lipo "$packaged_app/Miaopu" -verify_arch arm64 >/dev/null
 [[ ! -e "$packaged_app/_CodeSignature" ]] || {
   echo "Packaged app unexpectedly contains a code signature." >&2
   exit 1

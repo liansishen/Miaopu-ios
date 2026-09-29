@@ -316,8 +316,16 @@ private struct ProfileScreen: View {
                     }
                 }
             }
-            Section {
-                Text("第三方赛事客户端")
+            Section("应用") {
+                HStack {
+                    Text("版本")
+                    Spacer()
+                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-")
+                        .foregroundStyle(.secondary)
+                }
+                Link("查看 CI 构建", destination: URL(string: "https://github.com/liansishen/Miaopu-ios/actions/workflows/ios.yml")!)
+                Text("CI 提供的 IPA 未签名，安装前需另行签名。")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
