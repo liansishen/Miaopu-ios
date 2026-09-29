@@ -1,8 +1,20 @@
 name: iOS CI
 
+# 仅当影响编译结果的文件变化时运行；标签推送由发布工作流负责测试与打包。
 on:
   push:
+    branches: ['**']
+    paths:
+      - 'ios/**'
+      - 'scripts/**'
+      - '.github/workflows/ios.yml'
+      - '.github/workflows/ios-release.yml'
   pull_request:
+    paths:
+      - 'ios/**'
+      - 'scripts/**'
+      - '.github/workflows/ios.yml'
+      - '.github/workflows/ios-release.yml'
   workflow_dispatch:
 
 jobs:
