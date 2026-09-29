@@ -3,6 +3,15 @@ import Foundation
 struct MatchPlayerScore: Equatable {
     let name: String
     let score: String
+    let dayHex: String?
+    let nightHex: String?
+
+    init(name: String, score: String, dayHex: String? = nil, nightHex: String? = nil) {
+        self.name = name
+        self.score = score
+        self.dayHex = dayHex
+        self.nightHex = nightHex
+    }
 }
 
 struct MatchTeamScores: Equatable {
@@ -56,7 +65,8 @@ struct MatchScoreClient {
                     guard let name = text(row["playerName"]) else { return nil }
                     let value = text(row["playerScore"]).flatMap(Double.init)
                     let score = value.flatMap { $0.isFinite && $0 > 0 && $0 <= 10 ? String(format: "%.1f", $0) : nil } ?? "—"
-                    return MatchPlayerScore(name: name, score: score)
+                    return MatchPlayerScore(name: name, score: score,
+                                            dayHex: text(row["scoreDayColor"]), nightHex: text(row["scoreNightColor"]))
                 }
                 return MatchTeamScores(name: text(info["team\(side)_name"]) ?? "",
                                        logoURL: imageURL(info["team\(side)_logo"]), players: players)
@@ -72,7 +82,8 @@ struct MatchScoreClient {
             func collect(_ value: Any) {
                 if let rows = value as? [Any] { rows.forEach(collect) }
                 else if let row = value as? [String: Any], let name = text(row["memberName"]) {
-                    players.append(MatchPlayerScore(name: name, score: text(row["memberAllAvgScore"]) ?? "—"))
+                    players.append(MatchPlayerScore(name: name, score: text(row["memberAllAvgScore"]) ?? "—",
+                                                    dayHex: text(row["scoreDayColor"]), nightHex: text(row["scoreNightColor"])))
                 }
             }
             if index < scoreRows.count { collect(scoreRows[index]) }

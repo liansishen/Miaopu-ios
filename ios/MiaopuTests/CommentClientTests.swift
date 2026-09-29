@@ -20,6 +20,28 @@ final class CommentClientTests: XCTestCase {
         XCTAssertEqual(page.comments[0].imageURLs, [URL(string: "https://i1.hoopchina.com.cn/image.jpg")!])
     }
 
+    func testParsesHottestListWithAvatarsAndReplyPreviews() throws {
+        let json = #"{"code":1,"success":true,"data":[{"commentId":"hot-1","commentUserName":"Example A","commentContent":"Fictional hot comment","lightCount":208,"publishTime":1720000000000,"subCommentCount":3,"descendantCount":3,"score":2,"commentDate":"08-06","ipLocation":"山东","commentUserHeadImg":"https://i2.hoopchina.com.cn/user.png","commentUserTakeBadge":{"name":"优秀"},"subCommentList":[{"commentId":"reply-1","commentUserName":"Example B","commentContent":"Fictional reply","lightCount":0,"publishTime":1720000000001,"subCommentCount":0}]}]}"#
+        let hot = try CommentClient.parseHottest(Data(json.utf8))
+        XCTAssertEqual(hot.count, 1)
+        XCTAssertEqual(hot[0].avatarURL?.absoluteString, "https://i2.hoopchina.com.cn/user.png")
+        XCTAssertEqual(hot[0].score, 2)
+        XCTAssertEqual(hot[0].dateText, "08-06")
+        XCTAssertEqual(hot[0].location, "山东")
+        XCTAssertEqual(hot[0].badgeName, "优秀")
+        XCTAssertEqual(hot[0].replyCount, 3)
+        XCTAssertEqual(hot[0].previewReplies.map(\.commentID), [])
+        XCTAssertThrowsError(try CommentClient.parseHottest(Data(#"{"code":0,"success":false}"#.utf8)))
+    }
+
+    func testMergesCommentsByHeatOrder() {
+        let first = Comment(commentID: "c1", userName: "A", content: "1", lightCount: 1, publishTime: 1, subCommentCount: 0)
+        let second = Comment(commentID: "c2", userName: "B", content: "2", lightCount: 2, publishTime: 2, subCommentCount: 0)
+        let third = Comment(commentID: "c3", userName: "C", content: "3", lightCount: 3, publishTime: 3, subCommentCount: 0)
+        let merged = mergeComments(byHeat: [first, second], incoming: [second, third], officialHot: ["c3"])
+        XCTAssertEqual(merged.map(\.commentID), ["c3", "c1", "c2"])
+    }
+
     func testRejectsMalformedEnvelopeAndAPIFailure() {
         XCTAssertThrowsError(try CommentClient.parse(Data("not json".utf8)))
         XCTAssertThrowsError(try CommentClient.parse(Data(#"{"code":9,"success":false}"#.utf8))) { error in

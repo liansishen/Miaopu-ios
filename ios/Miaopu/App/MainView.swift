@@ -266,134 +266,13 @@ private struct MatchRow: View {
 
     private func team(_ name: String, logo: URL?) -> some View {
         VStack(spacing: 4) {
-            RemoteBadge(url: logo, name: name, size: 32)
+            TeamLogo(url: logo, name: name, size: 32)
             Text(name).lineLimit(1).font(.caption)
         }
         .frame(maxWidth: .infinity)
     }
 
     private func score(_ value: Int?) -> String { value.map(String.init) ?? "-" }
-}
-
-private struct MatchDetailScreen: View {
-    let match: Match
-    @State private var rating: RatingDetail?
-    @State private var ratingError: String?
-    @State private var scores: MatchAllScores?
-
-    private var detailURL: URL? {
-        guard let type = match.outBizType, let number = match.outBizNo else { return nil }
-        var parts = URLComponents(string: "https://offline-download.hupu.com/online/prod/310016/detail.html")
-        parts?.queryItems = [
-            URLQueryItem(name: "outBizType", value: type),
-            URLQueryItem(name: "outBizNo", value: number),
-            URLQueryItem(name: "isCheckInfo", value: "1")
-        ]
-        return parts?.url
-    }
-
-    var body: some View {
-        List {
-            Section {
-                VStack(spacing: 16) {
-                    HStack {
-                        Text(match.league).font(.subheadline).foregroundStyle(.secondary)
-                        Spacer()
-                        Text(match.status).foregroundStyle(.orange)
-                    }
-                    HStack(spacing: 8) {
-                        heroTeam(match.homeName, logo: match.homeLogoURL)
-                        Text(match.homeScore.map(String.init) ?? "VS")
-                            .font(.title.bold())
-                        if match.homeScore != nil && match.awayScore != nil {
-                            Text(":").font(.title.bold())
-                            Text(match.awayScore.map(String.init) ?? "")
-                                .font(.title.bold())
-                        }
-                        heroTeam(match.awayName, logo: match.awayLogoURL)
-                    }
-                    Text(dateText(match.startTime))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 12)
-            }
-            if let scores, scores.hasScores {
-                AllMatchScoreCard(scores: scores)
-            }
-            if let featured = match.featuredRating {
-                Section("焦点评分") {
-                    if let type = featured.bizType, let id = featured.bizId {
-                        NavigationLink {
-                            RatingNodeScreen(node: RatingNode(id: id, name: featured.name,
-                                scoreAverage: featured.score.flatMap(Double.init), scoreCount: 0,
-                                commentCount: 0, bizType: type, bizId: id, imageURL: featured.imageURL), match: match)
-                        } label: {
-                            HStack(spacing: 12) {
-                                RemoteBadge(url: featured.imageURL, name: featured.name, size: 48)
-                                VStack(alignment: .leading) {
-                                    Text(featured.name).font(.headline)
-                                    if let text = featured.countText { Text(text).font(.caption).foregroundStyle(.secondary) }
-                                }
-                                Spacer()
-                                if let score = featured.score { Text(score).font(.title3.bold()).foregroundStyle(.orange) }
-                            }
-                        }
-                    }
-                    if let comment = featured.hotComment, !comment.isEmpty {
-                        Text("“\(comment)”").font(.caption).lineLimit(2)
-                    }
-                }
-            }
-            if let rating {
-                RatingSummary(detail: rating, match: match)
-            } else if let ratingError {
-                Section("赛事评分") {
-                    Text(ratingError).foregroundStyle(.secondary)
-                    Button("重试") { Task { await loadRatings() } }
-                }
-            } else if match.outBizType != nil && match.outBizNo != nil {
-                Section("赛事评分") { ProgressView("正在加载评分") }
-            } else {
-                Section("赛事评分") {
-                    Text("这场比赛暂无评分入口").foregroundStyle(.secondary)
-                }
-            }
-            if let url = detailURL {
-                Section("虎扑比赛页面") {
-                    Link("查看比赛原页面", destination: url)
-                }
-            }
-        }
-        .navigationTitle("比赛详情")
-        .navigationBarTitleDisplayMode(.inline)
-        .task(id: match.id) {
-            async let ratings: Void = loadRatings()
-            async let fullScores: Void = loadScores()
-            _ = await (ratings, fullScores)
-        }
-    }
-
-    private func heroTeam(_ name: String, logo: URL?) -> some View {
-        VStack(spacing: 8) {
-            RemoteBadge(url: logo, name: name, size: 54)
-            Text(name).font(.subheadline.bold()).lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private func loadScores() async {
-        scores = try? await MatchScoreClient().fetch(match: match)
-    }
-
-    private func loadRatings() async {
-        guard let type = match.outBizType, let number = match.outBizNo else { return }
-        do {
-            rating = try await RatingClient().fetch(type: type, number: number)
-            ratingError = nil
-        } catch {
-            ratingError = error.localizedDescription
-        }
-    }
 }
 
 private struct ProfileScreen: View {
