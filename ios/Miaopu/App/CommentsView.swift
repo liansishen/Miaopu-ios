@@ -4,6 +4,7 @@ struct CommentsView: View {
     let type: String
     let number: String
     let title: String
+    @EnvironmentObject private var session: HupuSession
 
     @State private var comments: [Comment] = []
     @State private var cursor: CommentCursor?
@@ -11,6 +12,8 @@ struct CommentsView: View {
     @State private var loading = false
     @State private var failure: String?
     @State private var loaded = false
+    @State private var showingComposer = false
+    @State private var showingLoginPrompt = false
 
     var body: some View {
         List {
@@ -49,6 +52,27 @@ struct CommentsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await refresh() }
         .task { if !loaded { await refresh() } }
+        .toolbar {
+            Button("发表评论", systemImage: "square.and.pencil") {
+                if session.isAuthenticated { showingComposer = true }
+                else { showingLoginPrompt = true }
+            }
+        }
+        .alert("需要登录", isPresented: $showingLoginPrompt) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text("请先在「我的」中登录虎扑账号。")
+        }
+        .sheet(isPresented: $showingComposer) {
+            CommentComposerView(title: "发表评论") { content in
+                _ = try await HupuWriteClient().comment(
+                    content: content,
+                    outBizKey: HupuOutBizKey(outBizType: type, outBizNo: number),
+                    cookies: session.cookies
+                )
+                await refresh()
+            }
+        }
     }
 
     private func refresh() async {
@@ -88,6 +112,7 @@ private struct RepliesView: View {
     let type: String
     let number: String
     let parent: Comment
+    @EnvironmentObject private var session: HupuSession
 
     @State private var replies: [Comment] = []
     @State private var failure: String?
@@ -95,6 +120,8 @@ private struct RepliesView: View {
     @State private var hasMore = false
     @State private var loading = false
     @State private var loaded = false
+    @State private var showingComposer = false
+    @State private var showingLoginPrompt = false
 
     var body: some View {
         List {
@@ -119,6 +146,27 @@ private struct RepliesView: View {
         .navigationTitle("评论回复")
         .navigationBarTitleDisplayMode(.inline)
         .task { if !loaded { await load(reset: true) } }
+        .toolbar {
+            Button("回复", systemImage: "arrowshape.turn.up.left") {
+                if session.isAuthenticated { showingComposer = true }
+                else { showingLoginPrompt = true }
+            }
+        }
+        .alert("需要登录", isPresented: $showingLoginPrompt) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text("请先在「我的」中登录虎扑账号。")
+        }
+        .sheet(isPresented: $showingComposer) {
+            CommentComposerView(title: "回复评论") { content in
+                _ = try await HupuWriteClient().reply(
+                    content: content,
+                    outBizKey: HupuOutBizKey(outBizType: type, outBizNo: number),
+                    parentCommentId: parent.commentID, cookies: session.cookies
+                )
+                await load(reset: true)
+            }
+        }
     }
 
     private func load(reset: Bool) async {
@@ -144,6 +192,18 @@ private struct RepliesView: View {
 
 private struct CommentRow: View {
     let comment: Comment
+    @EnvironmentObject private var session: HupuSession
+    @State private var liked: Bool
+    @State private var count: Int
+    @State private var busy = false
+    @State private var message = ""
+    @State private var showingMessage = false
+
+    init(comment: Comment) {
+        self.comment = comment
+        _liked = State(initialValue: comment.hasLight)
+        _count = State(initialValue: comment.lightCount)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -156,9 +216,65 @@ private struct CommentRow: View {
             }
             Text(comment.content)
                 .font(.body)
-            Label("\(comment.lightCount)", systemImage: "hand.thumbsup")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if !comment.imageURLs.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(comment.imageURLs, id: \.absoluteString) { url in
+                            NavigationLink {
+                                CommentImageViewer(url: url)
+                            } label: {
+                                AsyncImage(url: url) { image in
+                                    image.resizable().scaledToFill()
+                                } placeholder: {
+                                    Image(systemName: "photo")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(width: 96, height: 96)
+                                .clipped()
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                    }
+                }
+            }
+            Button {
+                if !session.isAuthenticated {
+                    message = "请先在「我的」中登录虎扑账号。"
+                    showingMessage = true
+                } else if comment.subjectID.isEmpty {
+                    message = "这条评论暂时无法点赞。"
+                    showingMessage = true
+                } else {
+                    Task { await toggleLight() }
+                }
+            } label: {
+                Label("\(count)", systemImage: liked ? "hand.thumbsup.fill" : "hand.thumbsup")
+                    .font(.caption)
+                    .foregroundStyle(liked ? Color.orange : Color.secondary)
+            }
+            .buttonStyle(.borderless)
+            .disabled(busy)
+        }
+        .alert("评论", isPresented: $showingMessage) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text(message)
+        }
+    }
+
+    private func toggleLight() async {
+        busy = true
+        defer { busy = false }
+        do {
+            _ = try await HupuWriteClient().light(
+                commentId: comment.commentID, subjectId: comment.subjectID,
+                enabled: !liked, cookies: session.cookies
+            )
+            count = max(0, count + (liked ? -1 : 1))
+            liked.toggle()
+        } catch {
+            message = error.localizedDescription
+            showingMessage = true
         }
     }
 }

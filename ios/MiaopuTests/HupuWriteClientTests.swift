@@ -43,11 +43,13 @@ final class HupuWriteClientTests: XCTestCase {
         _ = try await client.comment(content: "fictional text", outBizKey: key, cookies: auth)
         _ = try await client.reply(content: "fictional reply", outBizKey: key, parentCommentId: "comment-9", cookies: auth)
         XCTAssertTrue(requests[0].url!.path.hasSuffix("/1/8.2.99/bplcommentapi/bpl/comment/m/publish"))
-        let first = try JSONSerialization.jsonObject(with: requests[0].httpBody!) as! [String: Any]
+        let firstBody = try XCTUnwrap(requests[0].httpBody)
+        let first = try XCTUnwrap(JSONSerialization.jsonObject(with: firstBody) as? [String: Any])
         XCTAssertEqual(first["source"] as? String, "m")
         XCTAssertEqual(first["subjectId"] as? String, "")
         XCTAssertTrue(requests[1].url!.path.hasSuffix("/1/8.2.58/bplcommentapi/bpl/comment/publish"))
-        let second = try JSONSerialization.jsonObject(with: requests[1].httpBody!) as! [String: Any]
+        let secondBody = try XCTUnwrap(requests[1].httpBody)
+        let second = try XCTUnwrap(JSONSerialization.jsonObject(with: secondBody) as? [String: Any])
         XCTAssertEqual(second["parentCommentId"] as? String, "comment-9")
         XCTAssertEqual((second["images"] as? [Any])?.count, 0)
         XCTAssertEqual((second["ancillaryContents"] as? [Any])?.count, 0)
@@ -109,6 +111,7 @@ private final class WriteMockURLProtocol: URLProtocol {
                 guard count > 0 else { break }
                 body.append(contentsOf: buffer[..<count])
             }
+            observed.httpBodyStream = nil
             observed.httpBody = body
         }
         guard let (status, data) = Self.handler?(observed), let url = request.url else {

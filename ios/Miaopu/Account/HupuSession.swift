@@ -17,6 +17,7 @@ public final class HupuSession: ObservableObject {
     }
 
     public static func loginURL(jumpURL: URL, from: String = "") -> URL? {
+        guard isTrustedURL(jumpURL) else { return nil }
         var components = URLComponents(string: "https://passport.hupu.com/v2/login")
         components?.queryItems = [
             URLQueryItem(name: "phone", value: "1"),
@@ -35,7 +36,9 @@ public final class HupuSession: ObservableObject {
             isAuthenticated = false
             return
         }
-        let restored = records.compactMap(\.cookie).filter { Self.isTrustedCookieDomain($0.domain) }
+        let restored = records.compactMap(\.cookie).filter {
+            Self.isTrustedCookieDomain($0.domain) && ($0.expiresDate == nil || $0.expiresDate! > .now)
+        }
         cookies = restored
         isAuthenticated = Self.hasLoginCookie(restored)
         guard let store = activeWebView?.configuration.websiteDataStore.httpCookieStore else { return }
@@ -72,7 +75,9 @@ public final class HupuSession: ObservableObject {
         let all = await withCheckedContinuation { (continuation: CheckedContinuation<[HTTPCookie], Never>) in
             store.getAllCookies { continuation.resume(returning: $0) }
         }
-        let safe = all.filter { Self.isTrustedCookieDomain($0.domain) }
+        let safe = all.filter {
+            Self.isTrustedCookieDomain($0.domain) && ($0.expiresDate == nil || $0.expiresDate! > .now)
+        }
         cookies = safe
         isAuthenticated = Self.hasLoginCookie(safe)
         if let data = try? JSONEncoder().encode(safe.map(CookieRecord.init)) { writeKeychain(data) }

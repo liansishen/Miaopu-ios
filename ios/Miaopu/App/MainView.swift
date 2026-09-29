@@ -86,6 +86,7 @@ struct MainView: View {
             .tag(2)
         }
         .tint(.orange)
+        .environmentObject(session)
         .task { await session.restore() }
         .onChange(of: subscribedSports) {
             WidgetSnapshotStore.save(from: subscribed.flatMap { state.matches[$0] ?? [] })

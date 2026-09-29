@@ -14,6 +14,12 @@ final class CommentClientTests: XCTestCase {
         XCTAssertEqual(try CommentClient.parse(Data(empty.utf8)), CommentPage(comments: [], cursor: CommentCursor(publishTime: 0), hasMore: false, commentCount: 0))
     }
 
+    func testImageURLsAcceptTrustedHTTPSOnly() throws {
+        let json = #"{"code":1,"success":true,"data":{"comments":[{"commentId":"fiction-1","commentUserName":"Example","commentContent":"Picture","lightCount":0,"publishTime":1720000000123,"subCommentCount":0,"commentContentImages":[{"commentContentType":"IMAGE","commentContent":"https://i1.hoopchina.com.cn/image.jpg"},{"commentContentType":"IMAGE","commentContent":"https://example.org/other.jpg"}]}],"cursor":{"publishTime":0},"hasMore":false,"commentCount":1}}"#
+        let page = try CommentClient.parse(Data(json.utf8))
+        XCTAssertEqual(page.comments[0].imageURLs, [URL(string: "https://i1.hoopchina.com.cn/image.jpg")!])
+    }
+
     func testRejectsMalformedEnvelopeAndAPIFailure() {
         XCTAssertThrowsError(try CommentClient.parse(Data("not json".utf8)))
         XCTAssertThrowsError(try CommentClient.parse(Data(#"{"code":9,"success":false}"#.utf8))) { error in

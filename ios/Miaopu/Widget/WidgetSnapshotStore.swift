@@ -45,12 +45,14 @@ public enum WidgetSnapshotStore {
 
     public static func save(from matches: [Match]) {
         let recent = matches.sorted { abs($0.startTime.timeIntervalSinceNow) < abs($1.startTime.timeIntervalSinceNow) }
-        save(recent.prefix(4).map { match in
-            let link = URL(string: "miaopu://match/\(match.id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? match.id)")!
+        let snapshots = recent.prefix(4).compactMap { match -> WidgetMatchSnapshot? in
+            guard let encoded = match.id.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
+                  let link = URL(string: "miaopu://match/\(encoded)") else { return nil }
             return WidgetMatchSnapshot(id: match.id, date: match.startTime,
                                        homeTeam: match.homeName, awayTeam: match.awayName,
                                        homeScore: match.homeScore, awayScore: match.awayScore,
                                        competition: match.league, deepLinkURL: link)
-        })
+        }
+        save(snapshots)
     }
 }

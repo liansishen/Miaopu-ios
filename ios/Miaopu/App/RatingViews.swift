@@ -6,6 +6,7 @@ struct RatingSummary: View {
     var body: some View {
         Section("全场评分") {
             RatingLine(node: detail.root)
+            ScoreActionView(node: detail.root)
             if let type = detail.root.bizType, let number = detail.root.bizId {
                 NavigationLink("查看评论") {
                     CommentsView(type: type, number: number, title: detail.root.name)

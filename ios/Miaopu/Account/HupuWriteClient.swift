@@ -38,17 +38,23 @@ public final class HupuWriteClient {
 
     @discardableResult
     public func comment(content: String, outBizKey: HupuOutBizKey, cookies: [HTTPCookie]) async throws -> Data {
-        return try await post(path: "/1/8.2.99/bplcommentapi/bpl/comment/m/publish", body: ["content": content, "outBizKey": keyJSON(outBizKey), "subjectId": "", "source": "m"], cookies: cookies)
+        let cleaned = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { throw HupuWriteClientError.invalidInput }
+        return try await post(path: "/1/8.2.99/bplcommentapi/bpl/comment/m/publish", body: ["content": cleaned, "outBizKey": keyJSON(outBizKey), "subjectId": "", "source": "m"], cookies: cookies)
     }
 
     @discardableResult
     public func reply(content: String, outBizKey: HupuOutBizKey, parentCommentId: String, cookies: [HTTPCookie]) async throws -> Data {
-        return try await post(path: "/1/8.2.58/bplcommentapi/bpl/comment/publish", body: ["outBizKey": keyJSON(outBizKey), "parentCommentId": parentCommentId, "content": content, "images": [], "ancillaryContents": []], cookies: cookies)
+        let cleaned = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty, !parentCommentId.isEmpty else { throw HupuWriteClientError.invalidInput }
+        return try await post(path: "/1/8.2.58/bplcommentapi/bpl/comment/publish", body: ["outBizKey": keyJSON(outBizKey), "parentCommentId": parentCommentId, "content": cleaned, "images": [], "ancillaryContents": []], cookies: cookies)
     }
 
     @discardableResult
-    public func light(commentId: String, subjectId: String, cookies: [HTTPCookie]) async throws -> Data {
-        try await post(path: "/1/8.2.58/bplcommentapi/bpl/comment/light", body: ["commentKey": ["commentId": commentId, "subjectId": subjectId]], cookies: cookies)
+    public func light(commentId: String, subjectId: String, enabled: Bool = true, cookies: [HTTPCookie]) async throws -> Data {
+        guard !commentId.isEmpty, !subjectId.isEmpty else { throw HupuWriteClientError.invalidInput }
+        let action = enabled ? "light" : "cancelLight"
+        return try await post(path: "/1/8.2.58/bplcommentapi/bpl/comment/\(action)", body: ["commentKey": ["commentId": commentId, "subjectId": subjectId]], cookies: cookies)
     }
 
     private func post(path: String, body: [String: Any], cookies: [HTTPCookie]) async throws -> Data {

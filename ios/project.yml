@@ -26,6 +26,10 @@ targets:
     info:
       path: Miaopu/Info.plist
       properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleDisplayName: 喵扑
+        NSPhotoLibraryAddUsageDescription: 保存评论图片到相册
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - miaopu
@@ -33,7 +37,6 @@ targets:
       base:
         PRODUCT_NAME: Miaopu
         PRODUCT_BUNDLE_IDENTIFIER: com.liansishen.miaopu
-        INFOPLIST_KEY_CFBundleDisplayName: Miaopu
         TARGETED_DEVICE_FAMILY: "1,2"
   MiaopuWidgets:
     type: app-extension
@@ -50,6 +53,8 @@ targets:
     info:
       path: MiaopuWidgets/Info.plist
       properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:

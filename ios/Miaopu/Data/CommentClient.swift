@@ -9,8 +9,9 @@ public struct Comment: Equatable, Sendable {
     public let subCommentCount: Int
     public let subjectID: String
     public let hasLight: Bool
+    public let imageURLs: [URL]
 
-    public init(commentID: String, userName: String, content: String, lightCount: Int, publishTime: Int64, subCommentCount: Int, subjectID: String = "", hasLight: Bool = false) {
+    public init(commentID: String, userName: String, content: String, lightCount: Int, publishTime: Int64, subCommentCount: Int, subjectID: String = "", hasLight: Bool = false, imageURLs: [URL] = []) {
         self.commentID = commentID
         self.userName = userName
         self.content = content
@@ -19,6 +20,7 @@ public struct Comment: Equatable, Sendable {
         self.subCommentCount = subCommentCount
         self.subjectID = subjectID
         self.hasLight = hasLight
+        self.imageURLs = imageURLs
     }
 }
 
@@ -75,7 +77,7 @@ public struct CommentClient: Sendable {
             throw CommentClientError.insecureURL
         }
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        let initialTime: Int64 = parentID == nil ? Int64(Date().timeIntervalSince1970 * 1000) : 0
+        let initialTime: Int64 = parentID == nil ? Int64(Date().timeIntervalSince1970 * 1000) : 31_507_200_000
         let publishTime = cursor?.publishTime ?? initialTime
         var items = [
             URLQueryItem(name: "publishTime", value: String(publishTime)),
@@ -129,7 +131,15 @@ public struct CommentClient: Sendable {
                   let subCount = integer(row["subCommentCount"]) else {
                 throw CommentClientError.invalidPayload
             }
-            return Comment(commentID: id, userName: user, content: content, lightCount: lightCount, publishTime: publishTime, subCommentCount: subCount, subjectID: string(row["subjectId"]) ?? "", hasLight: row["hasLight"] as? Bool ?? false)
+            let images = (row["commentContentImages"] as? [[String: Any]] ?? []).compactMap { item -> URL? in
+                guard string(item["commentContentType"]) == "IMAGE",
+                      let text = string(item["commentContent"]), let url = URL(string: text),
+                      url.scheme == "https", let host = url.host?.lowercased(),
+                      host == "hoopchina.com.cn" || host.hasSuffix(".hoopchina.com.cn") ||
+                      host == "hupu.com" || host.hasSuffix(".hupu.com") else { return nil }
+                return url
+            }
+            return Comment(commentID: id, userName: user, content: content, lightCount: lightCount, publishTime: publishTime, subCommentCount: subCount, subjectID: string(row["subjectId"]) ?? "", hasLight: row["hasLight"] as? Bool ?? false, imageURLs: images)
         }
         return CommentPage(comments: comments, cursor: CommentCursor(publishTime: cursorTime), hasMore: hasMore, commentCount: commentCount)
     }
