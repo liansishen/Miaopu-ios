@@ -70,6 +70,7 @@ public enum HupuScheduleParser {
                       let rawTime = string(row["matchStartTimeStamp"]),
                       let time = date(rawTime, formatter: formatter) else { return nil }
                 let scoreKey = row["scoreItemKey"] as? [String: Any]
+                let featured = row["scoreItemInfo"] as? [String: Any]
                 return Match(
                     id: id,
                     sport: sport,
@@ -81,7 +82,27 @@ public enum HupuScheduleParser {
                     awayScore: integer(away["memberBaseScore"]),
                     status: string(row["matchStatusDesc"]) ?? "",
                     outBizType: string(scoreKey?["outBizType"]),
-                    outBizNo: string(scoreKey?["outBizNo"])
+                    outBizNo: string(scoreKey?["outBizNo"]),
+                    homeLogoURL: imageURL(home["memberLogo"]),
+                    awayLogoURL: imageURL(away["memberLogo"]),
+                    scoreCountText: string(row["scoreCountText"]),
+                    featuredRating: featured.flatMap { info in
+                        guard let name = string(info["name"]), !name.isEmpty else { return nil }
+                        return FeaturedRating(
+                            name: name,
+                            imageURL: imageURL(info["logo"]),
+                            teamLogoURL: imageURL(info["teamLogo"]),
+                            score: string(info["scoreNum"]),
+                            countText: string(info["scoreCountText"]),
+                            hotComment: string(info["hotComment"]),
+                            bizType: string(info["scoreOutBizType"]),
+                            bizId: string(info["scoreOutBizNo"])
+                        )
+                    },
+                    dayKey: string(day["dayTime"]) ?? string(row["matchStartDate"]),
+                    dayTitle: string(day["dateBlock"]),
+                    homeID: string(home["memberId"]),
+                    awayID: string(away["memberId"])
                 )
             }
         }
@@ -92,6 +113,15 @@ public enum HupuScheduleParser {
         if let string = raw as? String { return string }
         if let number = raw as? NSNumber { return number.stringValue }
         return nil
+    }
+
+    private static func imageURL(_ raw: Any?) -> URL? {
+        guard let value = string(raw), var parts = URLComponents(string: value),
+              let host = parts.host?.lowercased(),
+              host == "hoopchina.com.cn" || host.hasSuffix(".hoopchina.com.cn"),
+              parts.scheme == "http" || parts.scheme == "https" else { return nil }
+        parts.scheme = "https"
+        return parts.url
     }
 
     private static func integer(_ raw: Any?) -> Int? {

@@ -8,8 +8,15 @@ public struct RatingNode: Equatable, Sendable {
     public let commentCount: Int
     public let bizType: String?
     public let bizId: String?
+    public let imageURL: URL?
+    public let description: String?
+    public let hotComment: String?
+    public let teamID: String?
+    public let championURL: URL?
 
-    public init(id: String, name: String, scoreAverage: Double?, scoreCount: Int, commentCount: Int, bizType: String?, bizId: String?) {
+    public init(id: String, name: String, scoreAverage: Double?, scoreCount: Int, commentCount: Int,
+                bizType: String?, bizId: String?, imageURL: URL? = nil, description: String? = nil,
+                hotComment: String? = nil, teamID: String? = nil, championURL: URL? = nil) {
         self.id = id
         self.name = name
         self.scoreAverage = scoreAverage
@@ -17,6 +24,11 @@ public struct RatingNode: Equatable, Sendable {
         self.commentCount = commentCount
         self.bizType = bizType
         self.bizId = bizId
+        self.imageURL = imageURL
+        self.description = description
+        self.hotComment = hotComment
+        self.teamID = teamID
+        self.championURL = championURL
     }
 }
 
@@ -64,6 +76,7 @@ public struct RatingClient: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Miaopu-iOS/1.0", forHTTPHeaderField: "User-Agent")
         request.httpShouldHandleCookies = false
         let (data, response) = try await session.data(for: request)
         guard let response = response as? HTTPURLResponse else { throw RatingClientError.invalidResponse }
@@ -101,17 +114,32 @@ public struct RatingClient: Sendable {
 
     private static func node(_ value: [String: Any], id: String) -> RatingNode? {
         guard let name = string(value["name"]),
-              let scoreCount = integer(value["scorePersonCount"]),
+              let directCount = integer(value["scorePersonCount"]),
               let commentCount = integer(value["commentCount"]) else { return nil }
+        let scoreCount = directCount == 0 ? (integer(value["summedScorePersonCount"]) ?? 0) : directCount
+        let info = value["infoJson"] as? [String: Any] ?? [:]
         return RatingNode(
             id: id,
             name: name,
-            scoreAverage: decimal(value["scoreAvg"]),
+            scoreAverage: directCount == 0 ? nil : decimal(value["scoreAvg"]),
             scoreCount: scoreCount,
             commentCount: commentCount,
             bizType: string(value["bizType"]),
-            bizId: string(value["bizId"])
+            bizId: string(value["bizId"]),
+            imageURL: (value["image"] as? [String])?.first.flatMap(imageURL),
+            description: (info["desc"] as? [String])?.first,
+            hotComment: (value["hottestComments"] as? [String])?.first,
+            teamID: (info["teamId"] as? [String])?.first,
+            championURL: (info["auxiliaryPic"] as? [String])?.first.flatMap(imageURL)
         )
+    }
+
+    private static func imageURL(_ value: String) -> URL? {
+        guard var parts = URLComponents(string: value), let host = parts.host?.lowercased(),
+              host == "hoopchina.com.cn" || host.hasSuffix(".hoopchina.com.cn"),
+              parts.scheme == "http" || parts.scheme == "https" else { return nil }
+        parts.scheme = "https"
+        return parts.url
     }
 
     private static func string(_ raw: Any?) -> String? {

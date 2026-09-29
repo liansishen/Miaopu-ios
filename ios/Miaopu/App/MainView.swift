@@ -115,22 +115,46 @@ private struct HomeScreen: View {
     @ObservedObject var state: ScheduleState
     let sports: [SportCategory]
 
+    private var days: [MatchDay] {
+        MatchDay.home(sports.flatMap { state.matches[$0] ?? [] })
+    }
+
+    private var isLoading: Bool {
+        sports.contains { state.loading.contains($0) }
+    }
+
+    private func refresh() async {
+        for sport in sports { await state.load(sport, force: true) }
+    }
+
     var body: some View {
         List {
             if sports.isEmpty {
                 ContentUnavailableView("还没有订阅赛事", systemImage: "calendar.badge.plus", description: Text("在「我的」中选择关注的赛事。"))
-            }
-            ForEach(sports) { sport in
-                Section(sportName(sport)) {
-                    if let failure = state.failures[sport] {
-                        ErrorRow(message: failure) { Task { await state.load(sport, force: true) } }
-                    } else if state.loading.contains(sport) && state.matches[sport] == nil {
+            } else {
+                Section {
+                    if days.isEmpty && isLoading {
                         ProgressView("正在加载赛程")
-                    } else if state.results(for: sport).isEmpty {
-                        Text("暂无比赛")
+                    } else if days.isEmpty {
+                        Text("近期暂无比赛")
                             .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(state.results(for: sport)) { match in
+                    }
+                } header: {
+                    HStack {
+                        Text("近期赛程")
+                        Spacer()
+                        Button {
+                            Task { await refresh() }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .accessibilityLabel("刷新赛程")
+                        .disabled(isLoading)
+                    }
+                }
+                ForEach(days) { day in
+                    Section(day.title) {
+                        ForEach(day.matches) { match in
                             NavigationLink {
                                 MatchDetailScreen(match: match)
                             } label: {
@@ -139,12 +163,17 @@ private struct HomeScreen: View {
                         }
                     }
                 }
+                ForEach(sports.filter { state.failures[$0] != nil }) { sport in
+                    Section(sportName(sport)) {
+                        ErrorRow(message: state.failures[sport] ?? "加载失败") {
+                            Task { await state.load(sport, force: true) }
+                        }
+                    }
+                }
             }
         }
         .navigationTitle("喵扑")
-        .refreshable {
-            for sport in sports { await state.load(sport, force: true) }
-        }
+        .refreshable { await refresh() }
         .task(id: sports.map(\.rawValue).joined(separator: ",")) {
             for sport in sports { await state.load(sport) }
         }
@@ -165,11 +194,15 @@ private struct EventsScreen: View {
             } else if state.results(for: selected, search: search).isEmpty {
                 ContentUnavailableView.search(text: search)
             } else {
-                ForEach(state.results(for: selected, search: search)) { match in
-                    NavigationLink {
-                        MatchDetailScreen(match: match)
-                    } label: {
-                        MatchRow(match: match)
+                ForEach(MatchDay.group(state.results(for: selected, search: search))) { day in
+                    Section(day.title) {
+                        ForEach(day.matches) { match in
+                            NavigationLink {
+                                MatchDetailScreen(match: match)
+                            } label: {
+                                MatchRow(match: match)
+                            }
+                        }
                     }
                 }
             }
@@ -197,7 +230,7 @@ private struct MatchRow: View {
     let match: Match
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(match.league)
                     .font(.caption)
@@ -208,26 +241,35 @@ private struct MatchRow: View {
                     .foregroundStyle(.orange)
             }
             HStack(spacing: 8) {
-                Text(match.homeName)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                team(match.homeName, logo: match.homeLogoURL)
+                Spacer(minLength: 4)
                 Text(score(match.homeScore))
-                    .fontWeight(.semibold)
+                    .font(.title3.bold())
                 Text(":")
                     .foregroundStyle(.secondary)
                 Text(score(match.awayScore))
-                    .fontWeight(.semibold)
-                Text(match.awayName)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .font(.title3.bold())
+                Spacer(minLength: 4)
+                team(match.awayName, logo: match.awayLogoURL)
             }
-            .font(.subheadline)
-            Text(dateText(match.startTime))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            HStack {
+                Text(dateText(match.startTime))
+                Spacer()
+                if let count = match.scoreCountText { Text(count) }
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
         }
         .padding(.vertical, 6)
         .accessibilityIdentifier("match-\(match.id)")
+    }
+
+    private func team(_ name: String, logo: URL?) -> some View {
+        VStack(spacing: 4) {
+            RemoteBadge(url: logo, name: name, size: 32)
+            Text(name).lineLimit(1).font(.caption)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func score(_ value: Int?) -> String { value.map(String.init) ?? "-" }
@@ -237,6 +279,7 @@ private struct MatchDetailScreen: View {
     let match: Match
     @State private var rating: RatingDetail?
     @State private var ratingError: String?
+    @State private var scores: MatchAllScores?
 
     private var detailURL: URL? {
         guard let type = match.outBizType, let number = match.outBizNo else { return nil }
@@ -252,10 +295,57 @@ private struct MatchDetailScreen: View {
     var body: some View {
         List {
             Section {
-                MatchRow(match: match)
+                VStack(spacing: 16) {
+                    HStack {
+                        Text(match.league).font(.subheadline).foregroundStyle(.secondary)
+                        Spacer()
+                        Text(match.status).foregroundStyle(.orange)
+                    }
+                    HStack(spacing: 8) {
+                        heroTeam(match.homeName, logo: match.homeLogoURL)
+                        Text(match.homeScore.map(String.init) ?? "VS")
+                            .font(.title.bold())
+                        if match.homeScore != nil && match.awayScore != nil {
+                            Text(":").font(.title.bold())
+                            Text(match.awayScore.map(String.init) ?? "")
+                                .font(.title.bold())
+                        }
+                        heroTeam(match.awayName, logo: match.awayLogoURL)
+                    }
+                    Text(dateText(match.startTime))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 12)
+            }
+            if let scores, scores.hasScores {
+                AllMatchScoreCard(scores: scores)
+            }
+            if let featured = match.featuredRating {
+                Section("焦点评分") {
+                    if let type = featured.bizType, let id = featured.bizId {
+                        NavigationLink {
+                            RatingNodeScreen(node: RatingNode(id: id, name: featured.name,
+                                scoreAverage: featured.score.flatMap(Double.init), scoreCount: 0,
+                                commentCount: 0, bizType: type, bizId: id, imageURL: featured.imageURL), match: match)
+                        } label: {
+                            HStack(spacing: 12) {
+                                RemoteBadge(url: featured.imageURL, name: featured.name, size: 48)
+                                VStack(alignment: .leading) {
+                                    Text(featured.name).font(.headline)
+                                    if let text = featured.countText { Text(text).font(.caption).foregroundStyle(.secondary) }
+                                }
+                                Spacer()
+                                if let score = featured.score { Text(score).font(.title3.bold()).foregroundStyle(.orange) }
+                            }
+                        }
+                    }
+                    if let comment = featured.hotComment, !comment.isEmpty {
+                        Text("“\(comment)”").font(.caption).lineLimit(2)
+                    }
+                }
             }
             if let rating {
-                RatingSummary(detail: rating)
+                RatingSummary(detail: rating, match: match)
             } else if let ratingError {
                 Section("赛事评分") {
                     Text(ratingError).foregroundStyle(.secondary)
@@ -265,8 +355,7 @@ private struct MatchDetailScreen: View {
                 Section("赛事评分") { ProgressView("正在加载评分") }
             } else {
                 Section("赛事评分") {
-                    Text("这场比赛暂无评分入口")
-                        .foregroundStyle(.secondary)
+                    Text("这场比赛暂无评分入口").foregroundStyle(.secondary)
                 }
             }
             if let url = detailURL {
@@ -277,7 +366,23 @@ private struct MatchDetailScreen: View {
         }
         .navigationTitle("比赛详情")
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: match.id) { await loadRatings() }
+        .task(id: match.id) {
+            async let ratings: Void = loadRatings()
+            async let fullScores: Void = loadScores()
+            _ = await (ratings, fullScores)
+        }
+    }
+
+    private func heroTeam(_ name: String, logo: URL?) -> some View {
+        VStack(spacing: 8) {
+            RemoteBadge(url: logo, name: name, size: 54)
+            Text(name).font(.subheadline.bold()).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func loadScores() async {
+        scores = try? await MatchScoreClient().fetch(match: match)
     }
 
     private func loadRatings() async {

@@ -13,6 +13,17 @@ final class RatingClientTests: XCTestCase {
         XCTAssertEqual(detail.children[1].name, "Game 1")
     }
 
+    func testAggregateRatingsAndImagesFromMatchTree() throws {
+        let json = #"{"code":1,"success":true,"data":{"self":{"node":{"name":"Match","bizType":"lol_match","bizId":"3715","scoreAvg":0,"scorePersonCount":0,"summedScorePersonCount":9257,"commentCount":0,"image":["http://i5.hoopchina.com.cn/match.png"]}},"pageResult":{"data":[{"node":{"name":"Round","scoreAvg":8.2,"scorePersonCount":12,"commentCount":2,"bizType":"lol_bo","bizId":"1","image":["https://i5.hoopchina.com.cn/round.png"]}}]}}}"#
+        let detail = try RatingClient.parse(Data(json.utf8))
+        XCTAssertNil(detail.root.scoreAverage)
+        XCTAssertEqual(detail.root.scoreCount, 9257)
+        XCTAssertEqual(detail.root.bizType, "lol_match")
+        XCTAssertEqual(detail.root.imageURL?.absoluteString, "https://i5.hoopchina.com.cn/match.png")
+        XCTAssertEqual(detail.children[0].scoreAverage, 8.2)
+        XCTAssertEqual(detail.children[0].imageURL?.absoluteString, "https://i5.hoopchina.com.cn/round.png")
+    }
+
     func testRejectsMalformedEnvelopeAndAPIFailure() {
         XCTAssertThrowsError(try RatingClient.parse(Data("not json".utf8)))
         XCTAssertThrowsError(try RatingClient.parse(Data(#"{"code":0,"success":false}"#.utf8))) { error in
