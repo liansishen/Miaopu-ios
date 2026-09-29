@@ -70,7 +70,7 @@ struct RatingSummary: View {
             }
         }
         if !detail.children.isEmpty {
-            Section("单局评分") {
+            Section(detail.children.allSatisfy { $0.bizType?.hasSuffix("_item") == true } ? "选手评分" : "单局评分") {
                 ForEach(Array(detail.children.enumerated()), id: \.offset) { _, node in
                     NavigationLink {
                         RatingNodeScreen(node: node, match: match)
