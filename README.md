@@ -12,6 +12,8 @@ iOS 第三方虎扑赛事评分客户端
 
 喵扑专注于电竞与体育赛事的赛程、选手评分和赛事讨论，涵盖英雄联盟、无畏契约、CS2、篮球、足球等项目。用户可以按关注的赛事订阅内容，查看比赛结果、各局选手表现及虎扑社区讨论。本客户端使用 SwiftUI 开发，最低支持 iOS 17。
 
+iOS 版参考 [喵扑 Android 版](https://github.com/KiritoXDone/Miaopu) 的接口、页面布局与跳转流程实现，感谢原作者的开源工作。
+
 ## 下载与使用
 
 在 [Releases](https://github.com/liansishen/Miaopu-ios/releases/latest) 下载 IPA，支持 **iOS 17.0 及以上** 版本。CI 产出的是**未签名 IPA**，安装前需要自行签名；每个 Release 附带 `.sha256` 文件用于校验下载完整性。
@@ -56,7 +58,7 @@ APP_PATH="$(pwd)/build/DerivedData/Build/Products/Release-iphoneos/Miaopu.app" \
 
 ## 致谢
 
-感谢虎扑及其社区用户提供的赛事内容与讨论，以及 XcodeGen 等开源项目。
+感谢 [喵扑 Android 版](https://github.com/KiritoXDone/Miaopu) 在接口、页面布局与跳转流程上提供的参考，虎扑及其社区用户提供的赛事内容与讨论，以及 XcodeGen 等开源项目。
 
 ## 开源协议
 
