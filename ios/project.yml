@@ -38,6 +38,7 @@ targets:
         PRODUCT_NAME: Miaopu
         PRODUCT_BUNDLE_IDENTIFIER: com.liansishen.miaopu
         TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
   MiaopuWidgets:
     type: app-extension
     platform: iOS

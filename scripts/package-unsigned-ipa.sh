@@ -30,6 +30,17 @@ if [[ -e "$app_path/_CodeSignature" ]] || /usr/bin/codesign -dv "$app_path" >/de
   echo "App must not be code signed." >&2
   exit 1
 fi
+
+# 应用图标来自 Assets.xcassets，缺失时桌面会显示空白图标。
+if [[ ! -f "$app_path/Assets.car" ]]; then
+  echo "App icon asset catalog is missing from the bundle." >&2
+  exit 1
+fi
+if ! compgen -G "$app_path/AppIcon*.png" >/dev/null \
+   && ! /usr/libexec/PlistBuddy -c 'Print :CFBundleIcons' "$app_path/Info.plist" >/dev/null 2>&1; then
+  echo "App icon images are missing from the bundle." >&2
+  exit 1
+fi
 validate_widget() {
   local widget="$1"
   [[ -f "$widget/Info.plist" && -f "$widget/MiaopuWidgets" ]] || {
