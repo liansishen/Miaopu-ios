@@ -62,6 +62,8 @@ APP_PATH="$(pwd)/build/DerivedData/Build/Products/Release-iphoneos/Miaopu.app" \
 
 感谢 [喵扑 Android 版](https://github.com/KiritoXDone/Miaopu) 在接口、页面布局与跳转流程上提供的参考，虎扑及其社区用户提供的赛事内容与讨论，以及 XcodeGen 等开源项目。
 
+友情链接：[LINUX DO](https://linux.do/) 社区。
+
 ## 开源协议
 
 Copyright (c) 2026 liansishen
