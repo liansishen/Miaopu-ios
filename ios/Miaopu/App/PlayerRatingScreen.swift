@@ -52,7 +52,8 @@ struct PlayerRatingScreen: View {
             CommentComposerSheet(
                 title: composerTitle,
                 placeholder: composerPlaceholder,
-                actionTitle: session.isAuthenticated ? "发布" : "登录"
+                actionTitle: session.isAuthenticated ? "发布" : "登录",
+                allowsScoreOnly: replyTarget == nil && current.canScore && composerScore > 0 && composerScore != current.userScore
             ) { text in
                 try await publish(text: text)
             }
@@ -497,6 +498,7 @@ struct CommentComposerSheet: View {
     let title: String
     let placeholder: String
     let actionTitle: String
+    var allowsScoreOnly = false
     let publish: (String) async throws -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -526,7 +528,7 @@ struct CommentComposerSheet: View {
                     Button(busy ? "正在提交" : actionTitle) {
                         Task { await submit() }
                     }
-                    .disabled(busy || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(busy || (text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !allowsScoreOnly))
                 }
             }
         }
