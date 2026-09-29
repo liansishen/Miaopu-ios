@@ -1,0 +1,14 @@
+# Xcode-generated project and build products
+*.xcodeproj/
+DerivedData/
+build/
+
+# Keep the CI deliverable visible to GitHub Actions artifacts.
+unsigned.ipa
+unsigned.ipa.sha256
+
+# Signing and local Xcode state
+*.mobileprovision
+*.p12
+*.xcuserstate
+xcuserdata/

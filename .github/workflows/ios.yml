@@ -1,0 +1,55 @@
+name: iOS CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: cd ios && xcodegen generate
+
+      - name: Run unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination="$(xcrun simctl list devices available -j | ruby -rjson -e '
+            devices = JSON.parse(STDIN.read).fetch("devices", {}).values.flatten
+            device = devices.find { |entry| entry["name"].include?("iPhone") }
+            puts(device ? "platform=iOS Simulator,id=#{device.fetch("udid")}" : "")
+          ')"
+          if [[ -z "$destination" ]]; then
+            echo "::error::No available iPhone simulator for required unit tests."
+            exit 1
+          fi
+          xcodebuild test -project ios/Miaopu.xcodeproj -scheme Miaopu \
+            -destination "$destination" CODE_SIGNING_ALLOWED=NO
+
+      - name: Build unsigned device app and package IPA
+        run: |
+          set -euo pipefail
+          xcodebuild -project ios/Miaopu.xcodeproj -scheme Miaopu \
+            -configuration Release -sdk iphoneos -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO build
+          APP_PATH="$(pwd)/build/DerivedData/Build/Products/Release-iphoneos/Miaopu.app" \
+            OUTPUT_IPA="$(pwd)/unsigned.ipa" scripts/package-unsigned-ipa.sh
+
+      - name: Upload unsigned IPA and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: miaopu-unsigned-ipa
+          path: |
+            unsigned.ipa
+            unsigned.ipa.sha256
+          if-no-files-found: error

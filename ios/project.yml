@@ -1,0 +1,47 @@
+name: Miaopu
+options:
+  bundleIdPrefix: com.liansishen
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    PRODUCT_NAME: Miaopu
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+targets:
+  Miaopu:
+    type: application
+    platform: iOS
+    sources:
+      - path: Miaopu
+        optional: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.liansishen.miaopu
+        INFOPLIST_KEY_CFBundleDisplayName: Miaopu
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+  MiaopuTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MiaopuTests
+        optional: false
+    dependencies:
+      - target: Miaopu
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.liansishen.miaopu.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+schemes:
+  Miaopu:
+    build:
+      targets:
+        Miaopu: all
+        MiaopuTests: [test]
+    test:
+      targets:
+        - MiaopuTests
